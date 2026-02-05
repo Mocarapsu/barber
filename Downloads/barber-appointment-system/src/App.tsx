@@ -1,10 +1,8 @@
-'use client';
-
 import React from "react"
-
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
+import { RoleSelector } from './components/RoleSelector';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { BarberDashboard } from './pages/barber/BarberDashboard';
 import { ClientPortal } from './pages/client/ClientPortal';
@@ -26,16 +24,10 @@ function LoadingScreen() {
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { user, profile, loading } = useAuth();
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!profile || !profile.role) return <Navigate to="/select-role" replace />;
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-    // Redirect to appropriate dashboard based on role
     if (profile.role === 'admin') return <Navigate to="/admin" replace />;
     if (profile.role === 'barber') return <Navigate to="/barber" replace />;
     return <Navigate to="/client" replace />;
@@ -47,13 +39,11 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
-  // Redirect logged in users to their dashboard
   const getDefaultRoute = () => {
-    if (!user || !profile) return '/login';
+    if (!user) return '/login';
+    if (!profile || !profile.role) return '/select-role';
     switch (profile.role) {
       case 'admin': return '/admin';
       case 'barber': return '/barber';
@@ -64,34 +54,10 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to={getDefaultRoute()} replace /> : <LoginPage />} />
-      
-      <Route
-        path="/admin/*"
-        element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-      
-      <Route
-        path="/barber/*"
-        element={
-          <ProtectedRoute allowedRoles={['barber']}>
-            <BarberDashboard />
-          </ProtectedRoute>
-        }
-      />
-      
-      <Route
-        path="/client/*"
-        element={
-          <ProtectedRoute allowedRoles={['client']}>
-            <ClientPortal />
-          </ProtectedRoute>
-        }
-      />
-      
+      <Route path="/select-role" element={user && !profile?.role ? <RoleSelector /> : <Navigate to={getDefaultRoute()} replace />} />
+      <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/barber/*" element={<ProtectedRoute allowedRoles={['barber']}><BarberDashboard /></ProtectedRoute>} />
+      <Route path="/client/*" element={<ProtectedRoute allowedRoles={['client']}><ClientPortal /></ProtectedRoute>} />
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="*" element={<Navigate to={getDefaultRoute()} replace />} />
     </Routes>
@@ -103,5 +69,5 @@ export default function App() {
     <AuthProvider>
       <AppRoutes />
     </AuthProvider>
-  );
+  )
 }

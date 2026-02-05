@@ -1,8 +1,5 @@
-'use client';
-
-import React from "react"
-
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
@@ -17,35 +14,85 @@ export function LoginPage() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { signIn, signUp } = useAuth();
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Si ya está logueado, redirigir
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // Limpiar mensaje de éxito después de 5 segundos
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) throw error;
-        navigate('/');
+        if (!supabase) {
+          throw new Error('Supabase client is not initialized');
+        }
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          // Si el email no está confirmado, mostrar mensaje diferente
+          if (error.message.includes('Email not confirmed')) {
+            setError('Debes confirmar tu correo primero. Revisa tu bandeja de entrada.');
+          } else {
+            setError(error.message);
+          }
+          throw error;
+        }
+        // No necesita navigate, el useAuth lo hace automáticamente
       } else {
-        const { error } = await signUp(email, password, fullName);
+        if (!supabase) {
+          throw new Error('Supabase client is not initialized');
+        }
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName }
+          }
+        });
+
         if (error) throw error;
-        setError('Revisa tu correo para confirmar tu cuenta');
+        
+        setSuccessMessage('✓ Cuenta creada. Revisa tu correo para confirmar.');
+        // Limpiar campos
+        setEmail('');
+        setPassword('');
+        setFullName('');
         setIsLogin(true);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Ha ocurrido un error');
+      console.error('Auth error:', err);
+      if (!(err instanceof Error && err.message.includes('Email not confirmed'))) {
+        setError(err instanceof Error ? err.message : 'Ha ocurrido un error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-slate-800 rounded-lg shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
             <Scissors className="w-8 h-8 text-primary" />
@@ -54,27 +101,27 @@ export function LoginPage() {
           <p className="text-muted-foreground mt-2">Sistema de citas profesional</p>
         </div>
 
+        <div className="flex gap-4 mb-6">
+          <button
+            onClick={() => setIsLogin(true)}
+            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+              isLogin ? 'bg-amber-500 text-white' : 'bg-slate-700 text-amber-500'
+            }`}
+          >
+            Iniciar Sesión
+          </button>
+          <button
+            onClick={() => setIsLogin(false)}
+            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+              !isLogin ? 'bg-amber-500 text-white' : 'bg-slate-700 text-amber-500'
+            }`}
+          >
+            Registrarse
+          </button>
+        </div>
+
         <Card variant="elevated">
           <CardContent>
-            <div className="flex mb-6">
-              <button
-                onClick={() => setIsLogin(true)}
-                className={`flex-1 py-2 text-center font-medium transition-colors ${
-                  isLogin ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground border-b border-border'
-                }`}
-              >
-                Iniciar Sesión
-              </button>
-              <button
-                onClick={() => setIsLogin(false)}
-                className={`flex-1 py-2 text-center font-medium transition-colors ${
-                  !isLogin ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground border-b border-border'
-                }`}
-              >
-                Registrarse
-              </button>
-            </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
                 <Input
@@ -104,8 +151,14 @@ export function LoginPage() {
               />
 
               {error && (
-                <p className={`text-sm ${error.includes('Revisa') ? 'text-green-400' : 'text-destructive'}`}>
+                <p className="text-sm text-red-400">
                   {error}
+                </p>
+              )}
+
+              {successMessage && (
+                <p className="text-sm text-green-400">
+                  {successMessage}
                 </p>
               )}
 

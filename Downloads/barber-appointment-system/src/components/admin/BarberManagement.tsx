@@ -53,6 +53,8 @@ export function BarberManagement() {
 
   const fetchBarbers = async () => {
     try {
+      if (!supabase) throw new Error('Supabase client is not initialized');
+      
       const { data, error } = await supabase
         .from('barbers')
         .select(`
@@ -75,6 +77,8 @@ export function BarberManagement() {
     setSaving(true);
 
     try {
+      if (!supabase) throw new Error('Supabase client is not initialized');
+      
       // Create user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -119,6 +123,8 @@ export function BarberManagement() {
 
   const handleToggleStatus = async (barber: Barber & { profile: Profile }) => {
     try {
+      if (!supabase) throw new Error('Supabase client is not initialized');
+
       const { error } = await supabase
         .from('barbers')
         .update({ is_active: !barber.is_active })
@@ -137,6 +143,8 @@ export function BarberManagement() {
     }
 
     try {
+      if (!supabase) throw new Error('Supabase client is not initialized');
+
       const { error } = await supabase
         .from('barbers')
         .delete()
@@ -160,6 +168,8 @@ export function BarberManagement() {
     setSaving(true);
 
     try {
+      if (!supabase) throw new Error('Supabase client is not initialized');
+
       const { error } = await supabase
         .from('barbers')
         .update({ work_schedule: schedule })
