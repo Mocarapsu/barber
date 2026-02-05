@@ -1,17 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import { fileURLToPath } from 'url'
+import { dirname, resolve } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': resolve(__dirname, './src'),
     },
-  },
-  define: {
-    // Pass Vercel environment variables to Vite
-    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL),
-    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY),
   },
 })
